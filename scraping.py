@@ -1,6 +1,7 @@
 import sys
 import pymongo
 import requests
+from base64 import b64decode
 from bs4 import BeautifulSoup
 
 class GithubScraper(object):
@@ -30,14 +31,30 @@ class GithubScraper(object):
 
         return readme
 
+    def get_readme_api(self, api_url):
+        split_url = api_url.split('/')
+        username, repo_name = split_url[-2], split_url[-1]
+        readme_url = "https://api.github.com/repos/{!s}/{!s}/readme" \
+        .format(username, repo_name)
+
+        r = requests.get(readme_url)
+
+        json_obj = r.json()
+
+        try:
+            return b64decode(json_obj['content'])
+        except KeyError:
+            return None
+
+
     def insert_into_mongo(self, response):
         json_repos = response.json()
         for repo in json_repos:
-            try:
-                readme = self.get_readme(repo['url'])
-                repo['readme'] = readme
-            except:
-                repo['readme'] = None
+            #readme = self.get_readme(repo['url'])
+            readme = self.get_readme_api(repo['url'])
+            if readme is None:
+                continue
+            repo['readme'] = readme
             self.database.insert(repo)
 
 

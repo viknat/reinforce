@@ -8,7 +8,7 @@ import os
 
 class GithubScraper(object):
 
-    def __init__(self, collection_name, n_requests=5000, database_name='github-db'):
+    def __init__(self, collection_name, n_requests=10, database_name='github-db'):
 
         self.n_requests = n_requests
         try:
@@ -81,11 +81,14 @@ class GithubScraper(object):
             if r.status_code != 200:
                 print "Error %s in handling request" % str(r.status_code)
             else:
-                self.insert_user_into_mongo(r)
+                self.insert_into_mongo(r)
                 print "Request %s complete" % str(since_param)
 
 
 if __name__ == '__main__':
-    user_scraper = GithubScraper(collection_name='users')
-    user_scraper.scrape_github_repos(url_type='users')
+    # user_scraper = GithubScraper(collection_name='users')
+    # user_scraper.scrape_github_repos(url_type='users')
+
+    repo_scraper = GithubScraper(collection_name='repos')
+    repo_scraper.scrape_github_repos(url_type='repositories')
 

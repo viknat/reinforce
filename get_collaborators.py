@@ -9,8 +9,9 @@ class FindCollaborators(object):
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
 
     def get_collaborators(self):
-        pull_url = self.repo_url + "/pulls" + "?state=\"closed\""
-        r = requests.get(pull_url, auth=self.auth)
+        pull_url = self.repo_url + "/pulls"
+        payload = {"state": "closed"}
+        r = requests.get(pull_url, auth=self.auth, params=payload)
 
         self.pullees = r.json()
         best_collabs = Counter([pullee['user']['html_url'] for pullee in self.pullees])
@@ -18,7 +19,7 @@ class FindCollaborators(object):
 
 if __name__ == '__main__':
     collab_finder = FindCollaborators(
-        repo_url="https://api.github.com/repos/kennethreitz/requests")
+        repo_url="https://api.github.com/repos/macournoyer/thin")
 
-    collab_finder.get_collaborators()
+    print collab_finder.get_collaborators()
 

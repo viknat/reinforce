@@ -8,7 +8,7 @@ import os
 
 class GithubScraper(object):
 
-    def __init__(self, n_requests=10):
+    def __init__(self, collection_name, n_requests=5000, database_name='github-db'):
 
         self.n_requests = n_requests
         try:
@@ -18,8 +18,8 @@ class GithubScraper(object):
            print "Could not connect to MongoDB: %s" % e
            sys.exit(0) 
 
-        db = conn['github-db']
-        self.database = db['repos']
+        db = conn[database_name]
+        self.database = db[collection_name]
         # self.auth = ('e72cbb68c4eb3d42600a', \
         #     'a356cbb4c05e82290f33e7a8713e0dd40ab02a0b')
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
@@ -62,19 +62,30 @@ class GithubScraper(object):
             repo['readme'] = readme
             self.database.insert(repo)
 
+    def insert_user_into_mongo(self, response):
+        json_users = response.json()
+        for user in json_users:
+            keep_fields = ["url", "repos_url"]
+            to_insert = {field: user[field] for field in keep_fields}
+            self.database.insert(to_insert)
 
-    def scrape_github_repos(self):
-        for since_param in range(2, 2+self.n_requests):
-            url = 'https://api.github.com/repositories?since=%s' % since_param
-            r = requests.get(url, auth=self.auth)
+
+
+    def scrape_github_repos(self, url_type='users'):
+        for since_param in range(self.n_requests):
+            url = 'https://api.github.com/{!s}'\
+            .format(url_type)
+
+            payload = {"since": since_param}
+            r = requests.get(url, auth=self.auth, params=payload)
             if r.status_code != 200:
                 print "Error %s in handling request" % str(r.status_code)
             else:
-                self.insert_into_mongo(r)
+                self.insert_user_into_mongo(r)
                 print "Request %s complete" % str(since_param)
 
 
 if __name__ == '__main__':
-    scraper = GithubScraper()
-    scraper.scrape_github_repos()
+    user_scraper = GithubScraper(collection_name='users')
+    user_scraper.scrape_github_repos(url_type='users')
 

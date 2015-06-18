@@ -19,7 +19,7 @@ class FindCollaborators(object):
 
 if __name__ == '__main__':
     collab_finder = FindCollaborators(
-        repo_url="https://api.github.com/repos/macournoyer/thin")
+        repo_url="https://api.github.com/repos/mojombo/chronic")
 
     print collab_finder.get_collaborators()
 

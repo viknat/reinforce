@@ -5,6 +5,7 @@ from base64 import b64decode
 from bs4 import BeautifulSoup
 from requests_oauthlib import OAuth1
 import os
+import pandas as pd
 
 class GithubScraper(object):
     """
@@ -27,8 +28,6 @@ class GithubScraper(object):
 
         db = conn[database_name]
         self.database = db[collection_name]
-        # self.auth = ('e72cbb68c4eb3d42600a', \
-        #     'a356cbb4c05e82290f33e7a8713e0dd40ab02a0b')
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
 
     def get_readme_scrape(self, api_url):
@@ -103,6 +102,23 @@ class GithubScraper(object):
                 print i
                 if i >= 500: break
 
+    def insert_desc_repo_from_file(self, fname):
+        print "start"
+        with open(fname) as f:
+            df = pd.read_csv(fname)
+            for i in range(len(df)):
+                line = df.iloc[i]
+
+                self.database.insert({
+                                "url": line["repository_url"],
+                                "name": line["repository_name"], 
+                                "description": line["repository_description"]
+                                })
+                print i
+                if i >= 500: break
+
+
+
 
 if __name__ == '__main__':
     # user_scraper = GithubScraper(collection_name='users')
@@ -111,8 +127,8 @@ if __name__ == '__main__':
     # repo_scraper = GithubScraper(collection_name='repos')
     # repo_scraper.scrape_github_repos(url_type='repositories')
 
-    repo_scraper = GithubScraper(collection_name='repos-google')
-    fname = "./data/github-google.csv"
-    repo_scraper.insert_repo_from_file(fname)
+    repo_scraper = GithubScraper(collection_name='repos-description')
+    fname = "./data/repos-description.csv"
+    repo_scraper.insert_desc_repo_from_file(fname)
 
 

@@ -7,6 +7,13 @@ from requests_oauthlib import OAuth1
 import os
 
 class GithubScraper(object):
+    """
+    Makes successive calls to the Github API, retrieves either public repositories
+    or public user profiles, depending on the collection name, and stores the
+    results in the provided database name.
+
+    Note that the Github API caps at 5,000 requests an hour. 
+    """
 
     def __init__(self, collection_name, n_requests=10, database_name='github-db'):
 
@@ -24,7 +31,7 @@ class GithubScraper(object):
         #     'a356cbb4c05e82290f33e7a8713e0dd40ab02a0b')
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
 
-    def get_readme(self, api_url):
+    def get_readme_scrape(self, api_url):
         split_url = api_url.split('/')
         username, repo_name = split_url[-2], split_url[-1]
         repo_url = "https://github.com/{!s}/{!s}".format(username, repo_name)
@@ -84,11 +91,28 @@ class GithubScraper(object):
                 self.insert_into_mongo(r)
                 print "Request %s complete" % str(since_param)
 
+    def insert_repo_from_file(self, fname):
+        print "start"
+        with open(fname) as f:
+            header = f.next()
+            for i, line in enumerate(f):
+                url, repo_name, watchers = line.split(',')
+                readme = self.get_readme_api(url)
+                if readme is not None:
+                    self.database.insert({"url": url, "name": repo_name, "readme": readme})
+                print i
+                if i >= 500: break
+
 
 if __name__ == '__main__':
     # user_scraper = GithubScraper(collection_name='users')
     # user_scraper.scrape_github_repos(url_type='users')
 
-    repo_scraper = GithubScraper(collection_name='repos')
-    repo_scraper.scrape_github_repos(url_type='repositories')
+    # repo_scraper = GithubScraper(collection_name='repos')
+    # repo_scraper.scrape_github_repos(url_type='repositories')
+
+    repo_scraper = GithubScraper(collection_name='repos-google')
+    fname = "./data/github-google.csv"
+    repo_scraper.insert_repo_from_file(fname)
+
 

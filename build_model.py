@@ -110,12 +110,21 @@ class Doc2VecModel(BuildReadmeModel):
 
 
 class TFIDFModel(BuildReadmeModel):
+
     def get_readmes(self):
-        repos = list(self.database.find({}, {"description": 1}))
+        """
+        Finds all the non-null descriptions from the MongoDB database
+        and stores them in a list.
+        """
+        self.repos = list(self.database.find({"description": \
+            {"$not": {"$type": 1}}}))
         self.readmes = [self.clean_doc(repo['description']) \
-        for repo in repos if self.clean_doc(repo['description']) is not None]
+        for repo in self.repos if self.clean_doc(repo['description']) is not None]
 
     def build_model(self):
+        """
+        Turns the descriptions into tfidfs
+        """
         vectorizer = TfidfVectorizer(stop_words='english')
 
         print "Starting TF-IDFS...."
@@ -134,26 +143,36 @@ class TFIDFModel(BuildReadmeModel):
 
     def make_recommendation(self, query):
 
+        """
+        Finds the top five most similar repos to the query 
+        using cosine similarity
+        """
+
+        query = self.clean_doc(query)
         vectorized_query = self.vectorizer.transform([query])
         cos_sims = linear_kernel(vectorized_query, self.tfidfs)
 
-        best_fit = np.argmax(cos_sims)
+        best_fit = np.argsort(cos_sims)[:,-5:][0]
         print query
 
-        return self.readmes[best_fit]
+        matching_repos = [self.repos[i] for i in best_fit]
+        print "Similar Repos"
+        print "================="
+        for repo in reversed(matching_repos):
+            print repo['name'] + ': ' + repo['description']
+
+
 
 
 if __name__ == '__main__':
 
 
-    query = """
-the dynamic openGL action game
-"""
+    query = """A 3D graphics engine for gaming"""
 
     tfidf_model = TFIDFModel()
     tfidf_model.get_readmes()
     tfidf_model.build_model()
-    print tfidf_model.make_recommendation(query)
+    tfidf_model.make_recommendation(query)
 
     # doc2vec_model = Doc2VecModel()
     # doc2vec_model.build_model()

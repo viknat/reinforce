@@ -15,7 +15,7 @@ class FindCollaborators(object):
 
         self.pullees = r.json()
         best_collabs = Counter([pullee['user']['html_url'] for pullee in self.pullees])
-        return best_collabs.most_common(3)
+        return best_collabs.most_common(self.n_results)
 
 if __name__ == '__main__':
     collab_finder = FindCollaborators(

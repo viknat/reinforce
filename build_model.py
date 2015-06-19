@@ -9,6 +9,7 @@ from gensim.models.word2vec import Word2Vec
 from gensim.models.doc2vec import Doc2Vec, LabeledSentence
 from get_collaborators import FindCollaborators
 from markdown2 import markdown
+from nltk.stem.snowball import SnowballStemmer
 import ipdb
 import numpy
 
@@ -19,7 +20,7 @@ class BuildReadmeModel(object):
     to find the most similar repo to the query repo.
     """
 
-    def __init__(self):
+    def __init__(self, dbname='github-db', collection_name='repos-description', doc_type='readme'):
         """
         Opens a connection to the appropriate MongoDB database
         Or reads from the appropriate filename
@@ -31,8 +32,9 @@ class BuildReadmeModel(object):
            print "Could not connect to MongoDB: %s" % e
            sys.exit(0) 
 
-        db = conn['github-db']
-        self.database = db['repos-description']
+        self.doc_type = doc_type
+        db = conn[dbname]
+        self.database = db[collection_name]
 
     def clean_doc(self, doc):
         """
@@ -41,22 +43,23 @@ class BuildReadmeModel(object):
         2. Replaces all punctuation with an empty string.
         3. Lowercases the string.
         """
-        try:
-            doc = doc.encode('utf-8')
-        except:
-            return None
-        html_readme = markdown(doc)
-        text_readme = BeautifulSoup(html_readme).text
-        cleaned_doc = doc.translate(maketrans("", ""), punctuation)
-        cleaned_doc = cleaned_doc.replace('\n', ' ')
-        return cleaned_doc.lower()
+
+        html_doc = markdown(doc)
+        text_doc = BeautifulSoup(html_doc).text.encode('utf-8')
+        cleaned_doc = text_doc.translate(None, punctuation)
+        cleaned_doc = cleaned_doc.replace('\n', ' ').lower()
+
+        stemmer = SnowballStemmer('english')
+        stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
+            for word in cleaned_doc.split()])
+        return stemmed_doc
 
         
-    def suggest_collaborators(self):
+    def suggest_collaborators(self, repo_url):
         collab_finder = FindCollaborators(
-        repo_url="https://api.github.com/repos/kennethreitz/requests")
+        repo_url=repo_url, n_results=3)
 
-        collab_finder.get_collaborators()
+        return collab_finder.get_collaborators()
 
 class Doc2VecModel(BuildReadmeModel):
 
@@ -92,7 +95,7 @@ class Doc2VecModel(BuildReadmeModel):
         #     list_readme = [sen.split() for sen in split_readme]
         #     sentences.extend(list_readme)
 
-        sentences = self.get_descriptions()
+        sentences = self.get_readmes()
         self.model = Doc2Vec(sentences, size=50, train_words=False)
         self.model.build_vocab(sentences)
         self.model.init_sims(replace=True)
@@ -111,15 +114,15 @@ class Doc2VecModel(BuildReadmeModel):
 
 class TFIDFModel(BuildReadmeModel):
 
-    def get_readmes(self):
+    def get_readmes(self, doc_type="readme"):
         """
         Finds all the non-null descriptions from the MongoDB database
         and stores them in a list.
         """
-        self.repos = list(self.database.find({"description": \
+        self.repos = list(self.database.find({self.doc_type: \
             {"$not": {"$type": 1}}}))
-        self.readmes = [self.clean_doc(repo['description']) \
-        for repo in self.repos if self.clean_doc(repo['description']) is not None]
+        self.readmes = [self.clean_doc(repo[self.doc_type]) \
+        for repo in self.repos if self.clean_doc(repo[self.doc_type]) is not None]
 
     def build_model(self):
         """
@@ -156,23 +159,30 @@ class TFIDFModel(BuildReadmeModel):
         print query
 
         matching_repos = [self.repos[i] for i in best_fit]
+        results = list()
         print "Similar Repos"
         print "================="
         for repo in reversed(matching_repos):
-            print repo['name'] + ': ' + repo['description']
-
-
+            print repo['name'] #+ ': ' + repo[self.doc_type]
+            print "Users that have contributed here: "
+            print self.suggest_collaborators(repo['url'])
+            results.append(repo['url'])
+        return results
 
 
 if __name__ == '__main__':
 
 
-    query = """A 3D graphics engine for gaming"""
+    query = """
+Distributed machine learning
+"""
 
-    tfidf_model = TFIDFModel()
+    tfidf_model = TFIDFModel(collection_name='repos-google', doc_type='readme')
     tfidf_model.get_readmes()
     tfidf_model.build_model()
     tfidf_model.make_recommendation(query)
+
+
 
     # doc2vec_model = Doc2VecModel()
     # doc2vec_model.build_model()

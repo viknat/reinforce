@@ -12,7 +12,8 @@ from markdown2 import markdown
 from nltk.stem.snowball import SnowballStemmer
 import ipdb
 import numpy
-
+from sklearn.cluster import KMeans
+import re
 
 class BuildReadmeModel(object):
     """
@@ -20,7 +21,7 @@ class BuildReadmeModel(object):
     to find the most similar repo to the query repo.
     """
 
-    def __init__(self, dbname='github-db', collection_name='repos-description', doc_type='readme'):
+    def __init__(self, dbname='github-db', collection_name='repos-description', doc_type='description'):
         """
         Opens a connection to the appropriate MongoDB database
         Or reads from the appropriate filename
@@ -44,15 +45,31 @@ class BuildReadmeModel(object):
         3. Lowercases the string.
         """
 
-        html_doc = markdown(doc)
-        text_doc = BeautifulSoup(html_doc).text.encode('utf-8')
-        cleaned_doc = text_doc.translate(None, punctuation)
-        cleaned_doc = cleaned_doc.replace('\n', ' ').lower()
+        # html_doc = markdown(doc)
+        # text_doc = BeautifulSoup(html_doc).text.encode('utf-8')
+        doc = doc.encode('utf-8')
+        cleaned_doc = doc.translate(None, punctuation)
+        cleaned_doc = cleaned_doc.replace('\n', ' ')\
+        .replace('.', ' ').lower()
 
-        stemmer = SnowballStemmer('english')
-        stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
-            for word in cleaned_doc.split()])
-        return stemmed_doc
+        # stemmer = SnowballStemmer('english')
+        # stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
+        #     for word in cleaned_doc.split()])
+        return cleaned_doc
+
+    def get_imports_from_code(self, code):
+        import_pattern1 = 'import \w*\ *'
+        import_pattern2 = 'from \w* import'
+        patterns = '|'.join([import_pattern1, import_pattern2])
+        prog = re.compile(patterns)
+        imports = prog.findall(code)
+        imported_libraries = list()
+        for line in imports:
+            lib = line.split()       #[1].split('.')
+            if len(lib) < 2:
+                continue
+            imported_libraries.append(lib[1].split(','))
+        return ' '.join([lib[0] for lib in imported_libraries])
 
         
     def suggest_collaborators(self, repo_url):
@@ -60,6 +77,36 @@ class BuildReadmeModel(object):
         repo_url=repo_url, n_results=3)
 
         return collab_finder.get_collaborators()
+
+class KMeansModel(BuildReadmeModel):
+    def get_readmes(self):
+        """
+        Finds all the non-null descriptions from the MongoDB database
+        and stores them in a list.
+        """
+        self.repos = list(self.database.find({self.doc_type: \
+            {"$not": {"$type": 1}}}))
+        self.readmes = [self.clean_doc(repo[self.doc_type]) \
+        for repo in self.repos if self.clean_doc(repo[self.doc_type]) is not None]
+
+    def run_kmeans(self):
+        kmeans = KMeans()
+        self.get_readmes()
+
+        vectorizer = TfidfVectorizer(stop_words='english')
+
+        print "Starting TF-IDFS...."
+        tfidfs = vectorizer.fit_transform(self.readmes)
+        print "Done TF-IDFS."
+        cluster_indices = kmeans.fit_predict(tfidfs)
+        for cluster_index in cluster_indices:
+            print "Cluster number %s" % str(cluster_index)
+            print "======================="
+            print '\n'.join(
+            [self.repos[i]['name'] + ': ' + self.repos[i]['description'] \
+            for i,doc in enumerate(self.readmes) \
+             if cluster_indices[i] == cluster_index][:10])
+
 
 class Doc2VecModel(BuildReadmeModel):
 
@@ -109,8 +156,6 @@ class Doc2VecModel(BuildReadmeModel):
 
         return self.model.most_similar(query)
 
-        
-
 
 class TFIDFModel(BuildReadmeModel):
 
@@ -119,15 +164,21 @@ class TFIDFModel(BuildReadmeModel):
         Finds all the non-null descriptions from the MongoDB database
         and stores them in a list.
         """
+        # self.repos = list(self.database.find({self.doc_type: \
+        #     {"$not": {"$type": 1}}}))
+        print "step 1"
         self.repos = list(self.database.find({self.doc_type: \
-            {"$not": {"$type": 1}}}))
-        self.readmes = [self.clean_doc(repo[self.doc_type]) \
-        for repo in self.repos if self.clean_doc(repo[self.doc_type]) is not None]
+        {"$exists": True}}))
+        print "step 2"
+        self.readmes = [self.get_imports_from_code(repo[self.doc_type]) \
+        for repo in self.repos]
+        print "step 3"
 
     def build_model(self):
         """
         Turns the descriptions into tfidfs
-        """
+        """        
+        print "step 4"
         vectorizer = TfidfVectorizer(stop_words='english')
 
         print "Starting TF-IDFS...."
@@ -174,19 +225,53 @@ if __name__ == '__main__':
 
 
     query = """
-Distributed machine learning
+import copy
+import time
+import collections
+from .compat import cookielib, urlparse, urlunparse, Morsel
+
+import collections
+import datetime
+
+from io import BytesIO, UnsupportedOperation
+from .hooks import default_hooks
+from .structures import CaseInsensitiveDict
+
+from .auth import HTTPBasicAuth
+from .cookies import cookiejar_from_dict, get_cookie_header, _copy_cookie_jar
+from .packages.urllib3.fields import RequestField
+from .packages.urllib3.filepost import encode_multipart_formdata
+from .packages.urllib3.util import parse_url
+from .packages.urllib3.exceptions import (
+    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)
+from .exceptions import (
+    HTTPError, MissingSchema, InvalidURL, ChunkedEncodingError,
+    ContentDecodingError, ConnectionError, StreamConsumedError)
+from .utils import (
+    guess_filename, get_auth_from_url, requote_uri,
+    stream_decode_response_unicode, to_key_val_list, parse_header_links,
+    iter_slices, guess_json_utf, super_len, to_native_string)
+from .compat import (
+    cookielib, urlunparse, urlsplit, urlencode, str, bytes, StringIO,
+    is_py2, chardet, builtin_str, basestring)
+from .compat import json as complexjson
+from .status_codes import codes
+
+
+
 """
 
-    tfidf_model = TFIDFModel(collection_name='repos-google', doc_type='readme')
+    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='code')
     tfidf_model.get_readmes()
     tfidf_model.build_model()
     tfidf_model.make_recommendation(query)
 
-
-
     # doc2vec_model = Doc2VecModel()
     # doc2vec_model.build_model()
     # print doc2vec_model.make_recommendation(query)
+
+    # kmeans_model = KMeansModel()
+    # kmeans_model.run_kmeans()
 
 
     

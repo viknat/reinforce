@@ -65,11 +65,19 @@ class BuildReadmeModel(object):
         imports = prog.findall(code)
         imported_libraries = list()
         for line in imports:
-            lib = line.split()       #[1].split('.')
-            if len(lib) < 2:
-                continue
-            imported_libraries.append(lib[1].split(','))
-        return ' '.join([lib[0] for lib in imported_libraries])
+            return self.get_imports(line)
+
+    def get_imports(self, line):
+        lib = line.split()
+        if len(lib) < 2:
+            return None
+        else:
+            words = [word for word in query.split() \
+            if word not in ['import','from','as']]
+            imports = ' '.join(words)\
+                        .replace('.', ' ')\
+                        .translate(None, punctuation)
+            return imports
 
         
     def suggest_collaborators(self, repo_url):
@@ -170,7 +178,7 @@ class TFIDFModel(BuildReadmeModel):
         self.repos = list(self.database.find({self.doc_type: \
         {"$exists": True}}))
         print "step 2"
-        self.readmes = [self.get_imports_from_code(repo[self.doc_type]) \
+        self.readmes = [repo[self.doc_type] \
         for repo in self.repos]
         print "step 3"
 
@@ -208,13 +216,14 @@ class TFIDFModel(BuildReadmeModel):
 
         best_fit = np.argsort(cos_sims)[:,-5:][0]
         print query
+        ipdb.set_trace()
 
         matching_repos = [self.repos[i] for i in best_fit]
         results = list()
         print "Similar Repos"
         print "================="
         for repo in reversed(matching_repos):
-            print repo['name'] #+ ': ' + repo[self.doc_type]
+            print repo['name']# + ': ' + repo[self.doc_type]
             print "Users that have contributed here: "
             print self.suggest_collaborators(repo['url'])
             results.append(repo['url'])
@@ -225,43 +234,26 @@ if __name__ == '__main__':
 
 
     query = """
-import copy
-import time
-import collections
-from .compat import cookielib, urlparse, urlunparse, Morsel
+    import pygame
+    import batma
+    from batma.maths.algebra import Vector2
+    from batma.core.gameobject import GameObject
+    from OpenGL import GL as gl
+    from OpenGL import GLU as glu
 
-import collections
-import datetime
-
-from io import BytesIO, UnsupportedOperation
-from .hooks import default_hooks
-from .structures import CaseInsensitiveDict
-
-from .auth import HTTPBasicAuth
-from .cookies import cookiejar_from_dict, get_cookie_header, _copy_cookie_jar
-from .packages.urllib3.fields import RequestField
-from .packages.urllib3.filepost import encode_multipart_formdata
-from .packages.urllib3.util import parse_url
-from .packages.urllib3.exceptions import (
-    DecodeError, ReadTimeoutError, ProtocolError, LocationParseError)
-from .exceptions import (
-    HTTPError, MissingSchema, InvalidURL, ChunkedEncodingError,
-    ContentDecodingError, ConnectionError, StreamConsumedError)
-from .utils import (
-    guess_filename, get_auth_from_url, requote_uri,
-    stream_decode_response_unicode, to_key_val_list, parse_header_links,
-    iter_slices, guess_json_utf, super_len, to_native_string)
-from .compat import (
-    cookielib, urlunparse, urlsplit, urlencode, str, bytes, StringIO,
-    is_py2, chardet, builtin_str, basestring)
-from .compat import json as complexjson
-from .status_codes import codes
+    import pygame
+    import batma
+    import weakref
+    from batma import gl
+    from batma.maths.algebra import Vector2
 
 
+    """
 
-"""
+    query = [word for word in query.split() if word not in ['import','from','as']]
+    query = ' '.join(query).replace('.', ' ')
 
-    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='code')
+    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='imports')
     tfidf_model.get_readmes()
     tfidf_model.build_model()
     tfidf_model.make_recommendation(query)

@@ -4,6 +4,10 @@ from base64 import b64decode
 import os
 import json
 import pymongo
+import zipfile
+import StringIO
+import re
+from string import punctuation
 
 class GithubCodeScraper(object):
 
@@ -19,6 +23,11 @@ class GithubCodeScraper(object):
 
         db = conn[database_name]
         self.database = db[collection_name]
+
+        import_pattern1 = 'import \w*\ *'
+        import_pattern2 = 'from \w* import'
+        patterns = '|'.join([import_pattern1, import_pattern2])
+        self.prog = re.compile(patterns)
 
     def scrape_repo_contents(self, repo_url):
         split_url = repo_url.split('/')
@@ -41,7 +50,7 @@ class GithubCodeScraper(object):
 
 
 
-    def get_files(self, repo_url, extension=".py"):
+    def get_files_api(self, repo_url, extension=".py"):
         repo_contents, username, repo_name = self.scrape_repo_contents(repo_url)
         if repo_contents.status_code != 200:
             print "Getting contents failed %s" % str(repo_contents.status_code)
@@ -64,6 +73,8 @@ class GithubCodeScraper(object):
                 aggregated_code += '\n'
         return aggregated_code
 
+
+
     # def get_aggregated_code(self, repo_url):
     #     content_response = self.scrape_repo_contents(repo_url)
     #     if content_response.status_code == 200:
@@ -72,24 +83,60 @@ class GithubCodeScraper(object):
     #     else:
     #         return None
 
+    def scrape_files(self, repo_url, extension=".py"):
+        archive_url = repo_url + '/zipball/master'
+        print archive_url
+        r = requests.get(archive_url)
+        if r.status_code != 200:
+            print "Getting archive failed %s" % str(r.status_code)
+            return ""
+        else:
+            zf = zipfile.ZipFile(StringIO.StringIO(r.content))
+        aggregated_imports = ""
+        for filename in zf.namelist():
+            if filename.endswith(extension):
+                with zf.open(filename) as f:
+                    for line in f:
+                        if self.prog.match(line):
+                            imports = self.get_imports(line)
+                            if imports is not None:
+                                aggregated_imports += (imports + " ")
+        return aggregated_imports
+
+    def get_imports(self, line):
+        lib = line.split()
+        if len(lib) < 2:
+            return None
+        else:
+            words = [word for word in lib \
+                if word not in ['import','from','as']]
+            imports = ' '.join(words)\
+                        .replace('.', ' ')\
+                        .translate(None, punctuation)
+            return imports
+
+
     def insert_code_into_repos(self):
-        for i, entry in enumerate(self.database.find()):
-            if "code" in entry:
+        print self.database.find().count()
+        for i, entry in enumerate(self.database.find().batch_size(30)):
+            if "imports" in entry.keys():
                 print "Entry %s already updated" % str(i)
                 continue
-            code = self.get_files(entry['url'])
-            if code != "":
+            imports = self.scrape_files(entry['url'])
+            if imports != "":
                 self.database.update({
                     '_id': entry['_id']
                     },{
-                    "$set": {"code": code}
+                    "$set": {"imports": imports}
                     })
                 print "Request %s complete" % str(i)
+            else:
+                print "Empty repo"
 
 
 if __name__ == '__main__':
     scraper = GithubCodeScraper(collection_name='python-repos')
-    print scraper.insert_code_into_repos()
+    scraper.insert_code_into_repos()
 
 
 

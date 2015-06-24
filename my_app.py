@@ -24,7 +24,7 @@ def welcome():
 def recommend_users():
 
     # get data from request form, the key is the name you set in your form
-    query = request.form['user_input']
+    query = request.form['link']
 
     # convert data from unicode to string
     query = str(query)
@@ -33,13 +33,10 @@ def recommend_users():
 
     results = list()
     tfidf_model = TFIDFModel()
-    tfidf_model.get_readmes()
-    tfidf_model.build_model()
-    for repo_url in tfidf_model.make_recommendation(query):
-        results.append(tfidf_model.suggest_collaborators(repo_url))
+    results = tfidf_model.run_model(query)
 
-    #return result['title'] + ', ' + result['author'] + "         " + result['summary']
-    return render_template('index2.html', data=results)
+    # #return result['title'] + ', ' + result['author'] + "         " + result['summary']
+    return render_template('index2.html', data=query)
 
 
 if __name__ == '__main__':

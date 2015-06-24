@@ -14,6 +14,7 @@ import ipdb
 import numpy
 from sklearn.cluster import KMeans
 import re
+from code_scraper import GithubCodeScraper
 
 class BuildReadmeModel(object):
     """
@@ -79,12 +80,23 @@ class BuildReadmeModel(object):
                         .translate(None, punctuation)
             return imports
 
+    def fetch_query_repo_data(self, repo_url):
+        scraper = GithubCodeScraper()
+        try:
+            imports = scraper.scrape_files(repo_url)
+        except:
+            print "The repo was not found. Please check the URL and try again."
+            return None
+        return imports
+
         
     def suggest_collaborators(self, repo_url):
         collab_finder = FindCollaborators(
         repo_url=repo_url, n_results=3)
 
-        return collab_finder.get_collaborators()
+        users = collab_finder.get_collaborators()
+        return users
+        #return [collab_finder.fetch_user_metadata(user) for user in users]
 
 class KMeansModel(BuildReadmeModel):
     def get_readmes(self):
@@ -167,7 +179,7 @@ class Doc2VecModel(BuildReadmeModel):
 
 class TFIDFModel(BuildReadmeModel):
 
-    def get_readmes(self, doc_type="readme"):
+    def get_readmes(self, doc_type="imports"):
         """
         Finds all the non-null descriptions from the MongoDB database
         and stores them in a list.
@@ -214,9 +226,8 @@ class TFIDFModel(BuildReadmeModel):
         vectorized_query = self.vectorizer.transform([query])
         cos_sims = linear_kernel(vectorized_query, self.tfidfs)
 
-        best_fit = np.argsort(cos_sims)[:,-5:][0]
+        best_fit = np.argsort(cos_sims)[:,-10:][0]
         print query
-        ipdb.set_trace()
 
         matching_repos = [self.repos[i] for i in best_fit]
         results = list()
@@ -230,33 +241,26 @@ class TFIDFModel(BuildReadmeModel):
         return results
 
 
+    def run_model(self, query):
+        self.get_readmes()
+        self.build_model()
+        query_imports = self.fetch_query_repo_data(query)
+        return self.make_recommendation(query)
+
+
 if __name__ == '__main__':
 
 
-    query = """
-    import pygame
-    import batma
-    from batma.maths.algebra import Vector2
-    from batma.core.gameobject import GameObject
-    from OpenGL import GL as gl
-    from OpenGL import GLU as glu
+    query = """https://github.com/astropy/astropy"""
 
-    import pygame
-    import batma
-    import weakref
-    from batma import gl
-    from batma.maths.algebra import Vector2
-
-
-    """
-
-    query = [word for word in query.split() if word not in ['import','from','as']]
-    query = ' '.join(query).replace('.', ' ')
+    # query = [word for word in query.split() if word not in ['import','from','as']]
+    # query = ' '.join(query).replace('.', ' ')
 
     tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='imports')
     tfidf_model.get_readmes()
     tfidf_model.build_model()
-    tfidf_model.make_recommendation(query)
+    query_imports = tfidf_model.fetch_query_repo_data(query)
+    tfidf_model.make_recommendation(query_imports)
 
     # doc2vec_model = Doc2VecModel()
     # doc2vec_model.build_model()

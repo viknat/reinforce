@@ -127,8 +127,8 @@ if __name__ == '__main__':
     # repo_scraper = GithubScraper(collection_name='repos')
     # repo_scraper.scrape_github_repos(url_type='repositories')
 
-    repo_scraper = GithubScraper(collection_name='python-repos')
-    fname = "./data/python_repos.csv"
+    repo_scraper = GithubScraper(collection_name='python-repos-more')
+    fname = "./data/python_repos_more.csv"
     repo_scraper.insert_desc_repo_from_file(fname)
 
 

@@ -1,83 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Basic Page Needs
+    ================================================== -->
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!--[if IE]><meta http-equiv="x-ua-compatible" content="IE=9" /><![endif]-->
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-    <meta name="description" content="">
-    <meta name="author" content="">
-    <link rel="icon" href="../../favicon.ico">
+    <title>Spirit8 - Digital Agency One Page Template</title>
+    <meta name="description" content="Spirit8 is a Digital agency one page template built based on bootstrap framework. This template is design by Robert Berki and coded by Jenn Pereira. It is simple, mobile responsive, perfect for portfolio and agency websites. Get this for free exclusively at ThemeForces.com">
+    <meta name="keywords" content="bootstrap theme, portfolio template, digital agency, onepage, mobile responsive, spirit8, free website, free theme, themeforces themes, themeforces wordpress themes, themeforces bootstrap theme">
+    <meta name="author" content="ThemeForces.com">
+    
+    <!-- Favicons
+    ================================================== -->
+    <link rel="shortcut icon" href="../static/img/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="../static/img/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="../static/img/apple-touch-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="../static/img/apple-touch-icon-114x114.png">
 
-    <title>Jumbotron Template for Bootstrap</title>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" type="text/css"  href="../static/css/bootstrap.css">
+    <link rel="stylesheet" type="text/css" href="../static/fonts/font-awesome/css/font-awesome.css">
 
-    <!-- Bootstrap core CSS -->
-    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Slider
+    ================================================== -->
+    <link href="../static/css/owl.carousel.css" rel="stylesheet" media="screen">
+    <link href="../static/css/owl.theme.css" rel="stylesheet" media="screen">
 
-    <!-- Custom styles for this template -->
-    <link href="../static/css/jumbotron.css" rel="stylesheet">
+    <!-- Stylesheet
+    ================================================== -->
+    <link rel="stylesheet" type="text/css"  href="../static/css/style.css">
+    <link rel="stylesheet" type="text/css" href="../static/css/responsive.css">
 
-    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
-    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="../static/js/ie-emulation-modes-warning.js"></script>
+    <link href='http://fonts.googleapis.com/css?family=Lato:100,300,400,700,900,100italic,300italic,400italic,700italic,900italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,700,300,600,800,400' rel='stylesheet' type='text/css'>
+
+    <script type="text/javascript" src="../static/js/modernizr.custom.js"></script>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
       <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
       <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
     <![endif]-->
   </head>
-
   <body>
-
-    <nav class="navbar navbar-inverse navbar-fixed-top">
+    <!-- Navigation
+    ==========================================-->
+    <nav id="tf-menu" class="navbar navbar-default navbar-fixed-top">
       <div class="container">
+        <!-- Brand and toggle get grouped for better mobile display -->
         <div class="navbar-header">
-          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
             <span class="sr-only">Toggle navigation</span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">Project name</a>
+          <a class="navbar-brand" href="index.html">Reinforce</a>
         </div>
-        <div id="navbar" class="navbar-collapse collapse">
-          <form class="navbar-form navbar-right">
-            <div class="form-group">
-              <input type="text" placeholder="Email" class="form-control">
-            </div>
-            <div class="form-group">
-              <input type="password" placeholder="Password" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-success">Sign in</button>
-          </form>
-        </div><!--/.navbar-collapse -->
-      </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="#tf-home" class="page-scroll">Home</a></li>
+            <li><a href="#tf-about" class="page-scroll">About</a></li>
+            <li><a href="#tf-reinforce" class="page-scroll">Reinforce</a></li>
+            <li><a href="#tf-contact" class="page-scroll">Contact</a></li>
+          </ul>
+        </div><!-- /.navbar-collapse -->
+      </div><!-- /.container-fluid -->
     </nav>
 
-    <!-- Main jumbotron for a primary marketing message or call to action -->
-    <div class="jumbotron">
-      <div class="container">
-        <h1> Find your Dreamread! </h1>
-        <p>Have you ever thought of a plot that you really wanted to read, but could never find it? Dreamread will find that book for you! Just type in your dream plot and we will do the rest.</p>
-        
-        <form action="{{ url_for('recommend_users') }}" method="POST" class="navbar-form navbar-center" role="search">
-          <div class="form-group">
-            <input type="text" class="form-control" placeholder="Search" name = 'user_input'>
-          </div>
-          <button type="submit" class="btn btn-default">Submit</button>
-        </form>
+    <!-- Home Page
+    ==========================================-->
+    <div id="tf-home" class="text-center">
+        <div class="overlay">
+            <div class="content">
+                <h1><strong><span class="color">Reinforce</span></strong>
+                    your Github project</h1>
+                <p class="lead">Find the <strong>right collaborators</strong> with the most <strong>relevant experience</strong><br>to bring your open-source project to the next level</p>
+                <a href="#tf-about" class="fa fa-angle-down page-scroll"></a>
+            </div>
+        </div>
+    </div>
 
-      </div>
+    <!-- About Us Page
+    ==========================================-->
+    <div id="tf-about" class="text-center">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="about-text">
+                        <div class="section-title">
+                            <h2><strong>about</strong></h2>
+                            <hr>
+                            <div class="clearfix"></div>
+                        </div>
+                        <p class="intro">Every open-source project wants more 
+                            skilled collaborators working on it. But with so many potential partners out there, who is the best person to ask? </p>
+                        <p class="intro">Reinforce helps answer that question by finding people who have experience working on projects similar to yours, using Github public data. Simply provide the link to your project's Github repository, and you will receive recommendations for people to contact: people with matching expertise and interests</p>
+                        <p class="intro">I worked on this project as part of the data science immersive program I did at Galvanize in June 2015. The source code is <a href=https://github.com/viknat/reinforce>here.</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 
-    <!-- Bootstrap core JavaScript
+    <!-- Input Section
+    ==========================================-->
+    <div id="tf-reinforce" class="text-center">
+        <div class="container">
+
+            <div class="row">
+                <div class="col-md-8 col-md-offset-2">
+
+                    <div class="section-title center">
+                        <h2><strong>Reinforce</strong></h2>
+                        <div class="line">
+                            <hr>
+                        </div>
+                        <div class="clearfix"></div>         
+                    </div>
+
+                    <form>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="exampleInputEmail1">Github repo link</label>
+                                    <input type="link" name="link" class="form-control" method="POST" id="exampleInputEmail1" placeholder="copy repo link">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="exampleInputEmail1">Copy source code here</label>
+                            <textarea class="form-control" rows="3"></textarea>
+                        </div>
+                        
+                        <button type="submit" formmethod="post" formaction="/recommend_results" class="btn tf-btn btn-default">Submit</button>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+        <!-- Contact Section
+    ==========================================-->
+    <div id="tf-contact" class="text-center">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8 col-md-offset-2">
+                    <div class="about-text">
+                        <div class="section-title">
+                            <h2><strong>contact</strong></h2>
+                            <hr>
+                            <div class="clearfix"></div>
+                        </div>
+                        <p class="intro">Feel free to <a href="mailto:vikram1102@gmail.com?Subject=Reinforce" target="_top">email me </a>if you have any questions!</p> 
+                        <p class="intro">
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <nav id="footer">
+        <div class="container">
+            <div class="pull-left fnav">
+                <p>ALL RIGHTS RESERVED. COPYRIGHT © 2014. Designed by <a href="https://dribbble.com/shots/1817781--FREEBIE-Spirit8-Digital-agency-one-page-template">Robert Berki</a> and Coded by <a href="https://dribbble.com/jennpereira">Jenn Pereira</a></p>
+            </div>
+            <div class="pull-right fnav">
+                <ul class="footer-social">
+                    <li><a href="https://www.linkedin.com/in/viknat"><i class="fa fa-linkedin"></i></a></li>
+                    <li><a href="https://twitter.com/VikNatr"><i class="fa fa-twitter"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript" src="../static/js/jquery.1.11.1.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script type="text/javascript" src="../static/js/bootstrap.js"></script>
+    <script type="text/javascript" src="../static/js/SmoothScroll.js"></script>
+    <script type="text/javascript" src="../static/js/jquery.isotope.js"></script>
+
+    <script src="../static/js/owl.carousel.js"></script>
+
+    <!-- Javascripts
     ================================================== -->
-    <!-- Placed at the end of the document so the pages load faster -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-    <script src="../static/js/bootstrap.min.js"></script>
-    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="../static/js/ie10-viewport-bug-workaround.js"></script>
+    <script type="text/javascript" src="../static/js/main.js"></script>
+
   </body>
 </html>

@@ -90,13 +90,17 @@ class BuildReadmeModel(object):
         return imports
 
         
-    def suggest_collaborators(self, repo_url):
+    def suggest_collaborators(self, repo):
         collab_finder = FindCollaborators(
-        repo_url=repo_url, n_results=3)
+        repo_name=repo[0], repo_url=repo[1], n_results=1)
 
+        #return collab_finder.run()
         users = collab_finder.get_collaborators()
-        return users
-        #return [collab_finder.fetch_user_metadata(user) for user in users]
+        if users is None:
+            return None
+        else:
+            return [collab_finder.fetch_user_metadata(user) for user in users \
+                if user is not None]
 
 class KMeansModel(BuildReadmeModel):
     def get_readmes(self):
@@ -169,7 +173,6 @@ class Doc2VecModel(BuildReadmeModel):
 
     def make_recommendation(self, query):
         query = self.clean_doc(query)
-        ipdb.set_trace()
         print query
         query = [word for word in query.split() if word in self.model.vocab]
         print query
@@ -233,11 +236,11 @@ class TFIDFModel(BuildReadmeModel):
         results = list()
         print "Similar Repos"
         print "================="
-        for repo in reversed(matching_repos):
+        for i,repo in enumerate(reversed(matching_repos)):
             print repo['name']# + ': ' + repo[self.doc_type]
             print "Users that have contributed here: "
-            print self.suggest_collaborators(repo['url'])
-            results.append(repo['url'])
+            print self.suggest_collaborators((repo['name'], repo['url']))
+            results.append((repo['name'], repo['url']))
         return results
 
 

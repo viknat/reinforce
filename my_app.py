@@ -32,11 +32,16 @@ def recommend_users():
     # run classifier
 
     results = list()
-    tfidf_model = TFIDFModel()
-    results = tfidf_model.run_model(query)
+    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='imports')
+    tfidf_model.get_readmes()
+    tfidf_model.build_model()
+    query_imports = tfidf_model.fetch_query_repo_data(query)
+    results = tfidf_model.make_recommendation(query_imports)
+    users = [tfidf_model.suggest_collaborators(repo) for repo in results]
+    users = [user[0] for user in users if user is not None]
 
     # #return result['title'] + ', ' + result['author'] + "         " + result['summary']
-    return render_template('index2.html', data=query)
+    return render_template('results.html', data=users)
 
 
 if __name__ == '__main__':

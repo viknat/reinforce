@@ -5,8 +5,9 @@ import ipdb
 
 class FindCollaborators(object):
 
-    def __init__(self, repo_url, n_results=3):
+    def __init__(self, repo_url, repo_name, n_results=3):
         self.repo_url = repo_url
+        self.repo_name = repo_name
         self.n_results = n_results
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
 
@@ -26,7 +27,8 @@ class FindCollaborators(object):
 
         r = self.make_request(contributor_url)
         if r.status_code != 200:
-            return "This repo has moved or is no longer available"
+            print "This repo has moved or is no longer available"
+            return None
         else:
             self.contributors = r.json()
             best_collabs = Counter({
@@ -36,9 +38,10 @@ class FindCollaborators(object):
                 })
             return best_collabs.most_common(self.n_results)
 
-    def fetch_user_metadata(self, user_url):
-        split_url = self.repo_url.split('/')
-        username = split_url[-2]
+    def fetch_user_metadata(self, user):
+        user_url = user[0]
+        split_url = user_url.split('/')
+        username = split_url[-1]
         user_url = "https://api.github.com/users/{!s}"\
         .format(username)
         print user_url
@@ -54,7 +57,17 @@ class FindCollaborators(object):
             except KeyError:
                 name = results['login']
 
-            return {name: results['repos_url']}
+            return {"name": name,
+                    "url": user_url,
+                    "picture": results['avatar_url'],
+                    "related_repo_name": self.repo_name,
+                    "related_repo_url": self.repo_url,
+                    "n_contributions": user[1],
+                    "location": results['location']
+                    }
+
+    def run(self):
+        return self.get_collaborators()
 
 
 

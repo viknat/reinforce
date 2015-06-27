@@ -32,7 +32,7 @@ def recommend_users():
     # run classifier
 
     results = list()
-    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='imports')
+    tfidf_model = TFIDFModel(collection_name='python-repos-more', doc_type='imports')
     tfidf_model.get_readmes()
     tfidf_model.build_model()
     query_imports = tfidf_model.fetch_query_repo_data(query)

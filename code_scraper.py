@@ -8,22 +8,14 @@ import zipfile
 import StringIO
 import re
 from string import punctuation
+import ipdb
+from mongo import init_mongo
 
 class GithubCodeScraper(object):
 
     def __init__(self, database_name='github-db', collection_name='repos-google'):
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
-
-        try:
-            conn = pymongo.MongoClient()
-            print "Connected to MongoDB successfully"
-        except pymongo.errors.ConnectionFailure, e:
-           print "Could not connect to MongoDB: %s" % e
-           sys.exit(0) 
-
-        db = conn[database_name]
-        self.database = db[collection_name]
-
+        self.database = init_mongo(database_name, collection_name)
         import_pattern1 = 'import \w*\ *'
         import_pattern2 = 'from \w* import'
         patterns = '|'.join([import_pattern1, import_pattern2])
@@ -35,20 +27,13 @@ class GithubCodeScraper(object):
         tree_url = "https://api.github.com/repos/{!s}/{!s}/git/trees/master" \
         .format(username, repo_name)
         payload = {"recursive": 1}
-
         r = requests.get(tree_url, auth=self.auth, params=payload)
-
         return r, username, repo_name
 
-    def get_file_contents(self, path, username, repo_name):
+    def get_file_contents_api(self, path, username, repo_name):
         file_url = "https://api.github.com/repos/" + username + '/' \
         + repo_name + '/contents/' + path
-
-        r = requests.get(file_url, auth=self.auth)
-
-        return r
-
-
+        return requests.get(file_url, auth=self.auth)
 
     def get_files_api(self, repo_url, extension=".py"):
         repo_contents, username, repo_name = self.scrape_repo_contents(repo_url)
@@ -73,20 +58,44 @@ class GithubCodeScraper(object):
                 aggregated_code += '\n'
         return aggregated_code
 
+    def strip_punctuation_lowercase(self, doc):
+        doc = doc.encode('utf-8')
+        cleaned_doc = doc.translate(None, punctuation)\
+                         .replace('\n', ' ')\
+                         .replace('.', ' ').lower()
+        return cleaned_doc
 
+    def stem_doc(self, doc):
+        stemmer = SnowballStemmer('english')
+        stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
+            for word in cleaned_doc.split()])
+        return stemmed_doc
 
-    # def get_aggregated_code(self, repo_url):
-    #     content_response = self.scrape_repo_contents(repo_url)
-    #     if content_response.status_code == 200:
-    #         content_paths = content_response.json()
-    #         return self.get_files(repo_url)
-    #     else:
-    #         return None
+    def get_import_statements_from_code(self, code):
+        import_pattern1 = 'import \w*\ *'
+        import_pattern2 = 'from \w* import'
+        patterns = '|'.join([import_pattern1, import_pattern2])
+        prog = re.compile(patterns)
+        imports = prog.findall(code)
+        for line in imports:
+            return self.get_imports(line)
+
+    def get_libraries_from_imports(self, line):
+        libs = line.split()
+        if len(libs) < 2:
+            return None
+        else:
+            excluded = ['import','from','as']
+            words = [word for word in libs if word not in excluded]
+            imports = ' '.join(words)\
+                         .replace('.', ' ')\
+                         .translate(None, punctuation)
+            return imports
 
     def scrape_files(self, repo_url, extension=".py"):
         archive_url = repo_url + '/zipball/master'
         print archive_url
-        r = requests.get(archive_url)
+        r = requests.get(archive_url, auth=self.auth)
         if r.status_code != 200:
             print "Getting archive failed %s" % str(r.status_code)
             return ""
@@ -95,40 +104,31 @@ class GithubCodeScraper(object):
         aggregated_imports = ""
         for filename in zf.namelist():
             if filename.endswith(extension):
-                with zf.open(filename) as f:
-                    for line in f:
-                        if self.prog.match(line):
-                            imports = self.get_imports(line)
-                            if imports is not None:
-                                aggregated_imports += (imports + " ")
+                aggregated_imports += self.get_file_contents(zf, filename)
         return aggregated_imports
 
-    def get_imports(self, line):
-        lib = line.split()
-        if len(lib) < 2:
-            return None
-        else:
-            words = [word for word in lib \
-                if word not in ['import','from','as']]
-            imports = ' '.join(words)\
-                        .replace('.', ' ')\
-                        .translate(None, punctuation)
-            return imports
+    def get_file_contents(self, zf, filename):
+        aggregated_imports = ""
+        with zf.open(filename) as f:
+            for line in f:
+                if self.prog.match(line):
+                    imports = self.get_libraries_from_imports(line)
+                    if imports is not None:
+                        aggregated_imports += (imports + " ")
+        return (aggregated_imports + " ")
 
 
     def insert_code_into_repos(self):
-        print self.database.find().count()
         for i, entry in enumerate(self.database.find().batch_size(30)):
             if "imports" in entry.keys():
                 print "Entry %s already updated" % str(i)
                 continue
             imports = self.scrape_files(entry['url'])
             if imports != "":
-                self.database.update({
-                    '_id': entry['_id']
-                    },{
-                    "$set": {"imports": imports}
-                    })
+                self.database.update(
+                    {'_id': entry['_id']},
+                    {"$set": {"imports": imports}}
+                    )
                 print "Request %s complete" % str(i)
             else:
                 print "Empty repo"

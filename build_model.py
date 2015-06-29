@@ -16,13 +16,13 @@ from sklearn.cluster import KMeans
 import re
 from code_scraper import GithubCodeScraper
 
-class BuildReadmeModel(object):
+class BuildRepoModel(object):
     """
     Uses the readmes from the Github repositories to build a text-based model
     to find the most similar repo to the query repo.
     """
 
-    def __init__(self, dbname='github-db', collection_name='repos-description', doc_type='description'):
+    def __init__(self, dbname='github-db', collection_name='python-repos', doc_type='description'):
         """
         Opens a connection to the appropriate MongoDB database
         Or reads from the appropriate filename
@@ -38,72 +38,14 @@ class BuildReadmeModel(object):
         db = conn[dbname]
         self.database = db[collection_name]
 
-    def clean_doc(self, doc):
-        """
-        For each readme:
-        1. Converts from unicode to utf-8
-        2. Replaces all punctuation with an empty string.
-        3. Lowercases the string.
-        """
+    def run_model(self, query):
+        self.get_docs()
+        self.build_model()
 
-        # html_doc = markdown(doc)
-        # text_doc = BeautifulSoup(html_doc).text.encode('utf-8')
-        doc = doc.encode('utf-8')
-        cleaned_doc = doc.translate(None, punctuation)
-        cleaned_doc = cleaned_doc.replace('\n', ' ')\
-        .replace('.', ' ').lower()
 
-        # stemmer = SnowballStemmer('english')
-        # stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
-        #     for word in cleaned_doc.split()])
-        return cleaned_doc
 
-    def get_imports_from_code(self, code):
-        import_pattern1 = 'import \w*\ *'
-        import_pattern2 = 'from \w* import'
-        patterns = '|'.join([import_pattern1, import_pattern2])
-        prog = re.compile(patterns)
-        imports = prog.findall(code)
-        imported_libraries = list()
-        for line in imports:
-            return self.get_imports(line)
-
-    def get_imports(self, line):
-        lib = line.split()
-        if len(lib) < 2:
-            return None
-        else:
-            words = [word for word in query.split() \
-            if word not in ['import','from','as']]
-            imports = ' '.join(words)\
-                        .replace('.', ' ')\
-                        .translate(None, punctuation)
-            return imports
-
-    def fetch_query_repo_data(self, repo_url):
-        scraper = GithubCodeScraper()
-        try:
-            imports = scraper.scrape_files(repo_url)
-        except:
-            print "The repo was not found. Please check the URL and try again."
-            return None
-        return imports
-
-        
-    def suggest_collaborators(self, repo):
-        collab_finder = FindCollaborators(
-        repo_name=repo[0], repo_url=repo[1], n_results=1)
-
-        #return collab_finder.run()
-        users = collab_finder.get_collaborators()
-        if users is None:
-            return None
-        else:
-            return [collab_finder.fetch_user_metadata(user) for user in users \
-                if user is not None]
-
-class KMeansModel(BuildReadmeModel):
-    def get_readmes(self):
+class KMeansModel(BuildRepoModel):
+    def get_docs(self):
         """
         Finds all the non-null descriptions from the MongoDB database
         and stores them in a list.
@@ -132,7 +74,7 @@ class KMeansModel(BuildReadmeModel):
              if cluster_indices[i] == cluster_index][:10])
 
 
-class Doc2VecModel(BuildReadmeModel):
+class Doc2VecModel(BuildRepoModel):
 
     def get_readmes(self):
         repos = list(self.database.find({}, {"name": 1, "readme": 1}))
@@ -180,32 +122,29 @@ class Doc2VecModel(BuildReadmeModel):
         return self.model.most_similar(query)
 
 
-class TFIDFModel(BuildReadmeModel):
+class BuildTFIDFModel(BuildRepoModel):
 
-    def get_readmes(self, doc_type="imports"):
+    def get_docs(self):
         """
         Finds all the non-null descriptions from the MongoDB database
         and stores them in a list.
         """
-        # self.repos = list(self.database.find({self.doc_type: \
-        #     {"$not": {"$type": 1}}}))
-        print "step 1"
+        print "Fetching repo metadata..."
         self.repos = list(self.database.find({self.doc_type: \
-        {"$exists": True}}))
-        print "step 2"
-        self.readmes = [repo[self.doc_type] \
+        {"$exists": True, "$ne": np.nan}}))
+        self.docs = [repo[self.doc_type] \
         for repo in self.repos]
-        print "step 3"
+        print "Fetched"
 
     def build_model(self):
         """
         Turns the descriptions into tfidfs
         """        
-        print "step 4"
+        print "Initializing vectorizer"
         vectorizer = TfidfVectorizer(stop_words='english')
 
         print "Starting TF-IDFS...."
-        tfidfs = vectorizer.fit_transform(self.readmes)
+        tfidfs = vectorizer.fit_transform(self.docs)
         print "Done TF-IDFS."
 
         print "Starting pickling of vectorizer"
@@ -218,37 +157,10 @@ class TFIDFModel(BuildReadmeModel):
         self.tfidfs = tfidfs
         self.vectorizer = vectorizer
 
-    def make_recommendation(self, query):
-
-        """
-        Finds the top five most similar repos to the query 
-        using cosine similarity
-        """
-
-        query = self.clean_doc(query)
-        vectorized_query = self.vectorizer.transform([query])
-        cos_sims = linear_kernel(vectorized_query, self.tfidfs)
-
-        best_fit = np.argsort(cos_sims)[:,-10:][0]
-        print query
-
-        matching_repos = [self.repos[i] for i in best_fit]
-        results = list()
-        print "Similar Repos"
-        print "================="
-        for i,repo in enumerate(reversed(matching_repos)):
-            print repo['name']# + ': ' + repo[self.doc_type]
-            print "Users that have contributed here: "
-            print self.suggest_collaborators((repo['name'], repo['url']))
-            results.append((repo['name'], repo['url']))
-        return results
 
 
-    def run_model(self, query):
-        self.get_readmes()
-        self.build_model()
-        query_imports = self.fetch_query_repo_data(query)
-        return self.make_recommendation(query)
+
+
 
 
 if __name__ == '__main__':
@@ -259,11 +171,11 @@ if __name__ == '__main__':
     # query = [word for word in query.split() if word not in ['import','from','as']]
     # query = ' '.join(query).replace('.', ' ')
 
-    tfidf_model = TFIDFModel(collection_name='python-repos', doc_type='imports')
-    tfidf_model.get_readmes()
+    tfidf_model = BuildTFIDFModel(collection_name='python-repos', doc_type='imports')
+    tfidf_model.get_docs()
     tfidf_model.build_model()
-    query_imports = tfidf_model.fetch_query_repo_data(query)
-    tfidf_model.make_recommendation(query_imports)
+    #query_imports = tfidf_model.fetch_query_repo_data(query)
+    #tfidf_model.make_recommendation(query_imports)
 
     # doc2vec_model = Doc2VecModel()
     # doc2vec_model.build_model()

@@ -18,4 +18,12 @@ All data was obtained from [Google Big Query](https://bigquery.cloud.google.com/
 
 ####2. Processing the data
 
-All data was stored in a local MongoDB database. The repository description was included with the dataset. I also collected the READMEs for all the repos using the Github API, as well as all the import statements. The latter were collected by downloading the repo as a zipfile (this can be done by appending /zipball/master to the repo URL). Using Python's [zipfile](https://docs.python.org/2/library/zipfile.html) module, I found all the files containing Python code and 
+All data was stored in a local MongoDB database. The repository description was included with the dataset. I also collected the READMEs for all the repos using the Github API, as well as all the import statements. The latter were collected by downloading the repo as a zipfile (this can be done by appending /zipball/master to the repo URL). Using Python's [zipfile](https://docs.python.org/2/library/zipfile.html) module, I found all the files containing Python code and used a regular expression to extract all the import statements. Functionality for this part is in code_scraper.py.
+
+####3. Model building
+
+I initially tried building a Word2Vec model and then a TF-IDF model on the READMEs, but unfortunately, they were not consistent enough to make good recommendations. I hypothesize that this is because the structure of READMEs is not consistent, some have just installation instructions, for instance. I ended up running TF-IDF on the repo descriptions, as well as the repo import statements, to create two separate models. Functionality for this part is in build_model.py
+
+####4. Recommendations
+
+Step one was to find the repos 

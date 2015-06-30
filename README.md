@@ -1,4 +1,4 @@
-# Reinforce
+# Reinforce: Find Your Team
 
 ## The 15-second intro
 

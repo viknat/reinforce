@@ -4,14 +4,24 @@ from collections import Counter
 import ipdb
 
 class FindCollaborators(object):
+    '''
+    This class is initialized with a repository. It returns the most 
+    valuable contributors to that repo.
+    '''
 
     def __init__(self, repo_url, repo_name, n_results=3):
         self.repo_url = repo_url
         self.repo_name = repo_name
         self.n_results = n_results
+        # You will need to have a Github access token set up as an environment
+        # variable.
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
 
     def get_collaborators(self):
+        '''
+        For the given repo url, queries the Github API for the
+        list of contributors. Finds the most valuable.
+        '''
 
         split_url = self.repo_url.split('/')
         username, repo_name = split_url[-2], split_url[-1]
@@ -22,10 +32,16 @@ class FindCollaborators(object):
         if r.status_code != 200:
             return None
         else:
-            return self.find_best_contributors(r.json())
+            return self._find_best_contributors(r.json())
 
 
-    def find_best_contributors(self, contributors):        
+    def _find_best_contributors(self, contributors):
+        '''
+        INPUT: A list of json objects representing contributors.
+        OUTPUT: The **n_results** most valuable contributors, as 
+        measure by their number of contributions.
+        '''
+
         best_collabs = Counter({
             contributor['html_url']: \
             contributor['contributions'] \
@@ -34,8 +50,12 @@ class FindCollaborators(object):
         return best_collabs.most_common(self.n_results)
 
 
-
     def fetch_user_metadata(self, user):
+        '''
+        INPUT: A user-tuple containing (url, number of contributions)
+        OUTPUT: A json dict of the relevant fields of the user
+        '''
+
         user_url = user[0]
         split_url = user_url.split('/')
         username = split_url[-1]
@@ -46,10 +66,16 @@ class FindCollaborators(object):
         if r.status_code != 200:
             return None
         else:
-            return self.get_required_user_data(user[1], user_url, r.json())
+            return self._get_required_user_data(user[1], user_url, r.json())
 
 
-    def get_required_user_data(self, user_contributions, user_url, user_json):
+    def _get_required_user_data(self, user_contributions, user_url, user_json):
+        '''
+        INPUT: Number of contributions by the user, the url of the user's 
+        Github profile, and the JSON response from the Github API for the user.
+        OUTPUT: Returns a dictionary containing the six required user fields.
+        '''
+
         return {"name": user_json.get('name', user_json['login']),
                 "url": user_url,
                 "picture": user_json['avatar_url'],
@@ -60,6 +86,9 @@ class FindCollaborators(object):
                 }
 
     def merge_duplicates(self, collaborators):
+        '''
+        If a collaborator appears more than once in the list, merge the entries
+        '''
         new_collabs = list()
         for user in collaborators:
             if user in new_collabs:
@@ -72,6 +101,11 @@ class FindCollaborators(object):
         return new_collabs
 
     def create_statements(self, collaborators):
+        '''
+        Produces the required HTML to display "X contributions to Y"
+        where X is the number of contributions and Y is the repo.
+        '''
+        
         statements = list()
         for i,collaborator in enumerate(collaborators):
             for repo_url, repo_name, n_contributions in zip(

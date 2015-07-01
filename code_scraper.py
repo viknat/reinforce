@@ -11,9 +11,20 @@ from string import punctuation
 import ipdb
 from mongo import init_mongo
 
-class GithubCodeScraper(object):
 
-    def __init__(self, database_name='github-db', collection_name='repos-google'):
+class GithubCodeScraper(object):
+    '''
+    This class provides the functionality to scrape all the files in a repo
+    containing code.
+    '''
+
+    def __init__(self, database_name='github-db',
+                collection_name='repos-google'):
+
+        '''
+        Inits the object with a given MongoDB collection to begin scraping.
+        '''
+
         self.auth = ('viknat', os.environ['GITHUB_ACCESS_TOKEN'])
         self.database = init_mongo(database_name, collection_name)
         import_pattern1 = 'import \w*\ *'
@@ -22,6 +33,15 @@ class GithubCodeScraper(object):
         self.prog = re.compile(patterns)
 
     def scrape_repo_contents(self, repo_url):
+        '''
+        INPUT: The link to a project's repository.
+        OUTPUT: The response from the Github API, the username of the repo,
+                the repo name.
+
+        Uses the Github API to recursively obtain all the files in a repo.
+        Due to API limits, I recommend using scrape_files instead.
+        '''
+
         split_url = repo_url.split('/')
         username, repo_name = split_url[-2], split_url[-1]
         tree_url = "https://api.github.com/repos/{!s}/{!s}/git/trees/master" \
@@ -31,11 +51,29 @@ class GithubCodeScraper(object):
         return r, username, repo_name
 
     def get_file_contents_api(self, path, username, repo_name):
+        '''
+        INPUT: The path to a file in a repo, the repo owner's username,
+         the repo name
+        OUTPUT: The response from the Github API containing the file contents.
+
+        Uses the Github API to get a file's contents.
+        '''
+
         file_url = "https://api.github.com/repos/" + username + '/' \
         + repo_name + '/contents/' + path
         return requests.get(file_url, auth=self.auth)
 
     def get_files_api(self, repo_url, extension=".py"):
+        '''
+        INPUT: Link to a repo, a file extension
+        OUTPUT: The concatenated contents of all the files 
+        with the specified extention.
+
+        Loops through all the files, decodes the contents and concatenates
+        them together. 
+        Due to Github API limits, I recommend using scrape_files instead.
+        '''
+
         repo_contents, username, repo_name = self.scrape_repo_contents(repo_url)
         if repo_contents.status_code != 200:
             print "Getting contents failed %s" % str(repo_contents.status_code)
@@ -59,6 +97,15 @@ class GithubCodeScraper(object):
         return aggregated_code
 
     def strip_punctuation_lowercase(self, doc):
+        '''
+        INPUT: A string representing a document.
+        OUTPUT: The same string, after:
+                - Converting from unicode to string
+                - Removing all punctuation
+                - Replacing all newline characters with spaces
+                - Replacing all periods with spaces
+        '''
+
         doc = doc.encode('utf-8')
         cleaned_doc = doc.translate(None, punctuation)\
                          .replace('\n', ' ')\
@@ -66,12 +113,23 @@ class GithubCodeScraper(object):
         return cleaned_doc
 
     def stem_doc(self, doc):
+        '''
+        Stems each word in the document using a snowball stemmer.
+        '''
+
         stemmer = SnowballStemmer('english')
         stemmed_doc = ' '.join([stemmer.stem(word.decode('utf-8')) \
             for word in cleaned_doc.split()])
         return stemmed_doc
 
     def get_import_statements_from_code(self, code):
+        '''
+        INPUT: A string representing all the code of a repository.
+        OUTPUT: A string containing all the libraries imported by the repo.
+        
+        Uses a regular expression to identify all the import statements
+        '''
+
         import_pattern1 = 'import \w*\ *'
         import_pattern2 = 'from \w* import'
         patterns = '|'.join([import_pattern1, import_pattern2])
@@ -81,6 +139,15 @@ class GithubCodeScraper(object):
             return self.get_imports(line)
 
     def get_libraries_from_imports(self, line):
+        '''
+        INPUT: A line of code representing an import statement.
+        OUTPUT: The names of all the libraries and methods in the statement.
+
+        Example:
+        Given: from sklearn.feature_extraction.text import TfidfVectorizer
+        The output would be "sklearn feature_extraction text TfidfVectorizer"
+        '''
+
         libs = line.split()
         if len(libs) < 2:
             return None
@@ -93,6 +160,15 @@ class GithubCodeScraper(object):
             return imports
 
     def scrape_files(self, repo_url, extension=".py"):
+        '''
+        INPUT: Link to a repo, a file extension
+        OUTPUT: The concatenated contents of all the files 
+        with the specified extension.
+
+        Does the same thing as get_files_api, but without using
+        any Github API calls. 
+        '''
+
         archive_url = repo_url + '/zipball/master'
         print archive_url
         r = requests.get(archive_url, auth=self.auth)
@@ -104,10 +180,17 @@ class GithubCodeScraper(object):
         aggregated_imports = ""
         for filename in zf.namelist():
             if filename.endswith(extension):
-                aggregated_imports += self.get_file_contents(zf, filename)
+                aggregated_imports += self._get_file_contents(zf, filename)
         return aggregated_imports
 
-    def get_file_contents(self, zf, filename):
+    def _get_file_contents(self, zf, filename):
+        '''
+        INPUT: A Python zipfile object, a filename within the archive.
+        OUTPUT: The import statements within the file.
+
+        Helper method called by scrape_files
+        '''
+
         aggregated_imports = ""
         with zf.open(filename) as f:
             for line in f:
@@ -119,6 +202,12 @@ class GithubCodeScraper(object):
 
 
     def insert_code_into_repos(self):
+        '''
+        For every repo in the MongoDB database, extracts all the code
+        in the repo, uses a regular expression to find all the imports
+        and adds them to the database.
+        '''
+
         for i, entry in enumerate(self.database.find().batch_size(30)):
             if "imports" in entry.keys():
                 print "Entry %s already updated" % str(i)

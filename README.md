@@ -2,7 +2,7 @@
 
 ## The 15-second intro
 
-*Note:* The app is no longer being online.
+*Note:* The app is no longer hosted online.
 
 Got a Github open-source project and need more hands on deck? Visit http://gitforce.org/ and put in the link to your project's source. Reinforce will find people with the most relevant experience.
 
